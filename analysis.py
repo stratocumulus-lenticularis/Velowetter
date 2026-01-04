@@ -5,7 +5,7 @@ OUTPUT_DIR = Path("output")
 
 def main():
     OUTPUT_DIR.mkdir(exist_ok=True)
-    now = datetime.datetime.utcnow().isoformat()
+    now = datetime.datetime.now(datetime.UTC).isoformat()
 
     html = f"""
     <html>
