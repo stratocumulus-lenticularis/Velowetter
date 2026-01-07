@@ -1,3 +1,39 @@
+
+# --- Velowetter generated files ---
 output/
+*.png
+*.jpg
+*.svg
+*.html
+
+# --- Python ---
 __pycache__/
 *.pyc
+*.pyo
+*.pyd
+*.pdb
+*.egg-info/
+dist/
+build/
+
+# Virtual environments
+venv/
+.env/
+.venv/
+
+# Jupyter
+.ipynb_checkpoints/
+
+# --- OS / Editor junk ---
+.DS_Store
+Thumbs.db
+*.swp
+*.swo
+
+# VS Code
+.vscode/
+
+# --- AWS / Credentials (never commit these) ---
+*.pem
+*.key
+.aws/
