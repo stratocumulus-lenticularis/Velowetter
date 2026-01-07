@@ -1,0 +1,58 @@
+Traceback (most recent call last):
+  File "/home/ubuntu/velowetter/analysis.py", line 35, in <module>
+    main()
+  File "/home/ubuntu/velowetter/analysis.py", line 31, in main
+    s3.upload_file(file, bucket, file)
+  File "/home/ubuntu/velowetter-env/lib/python3.12/site-packages/botocore/context.py", line 123, in wrapper
+    return func(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^
+  File "/home/ubuntu/velowetter-env/lib/python3.12/site-packages/boto3/s3/inject.py", line 175, in upload_file
+    return transfer.upload_file(
+           ^^^^^^^^^^^^^^^^^^^^^
+  File "/home/ubuntu/velowetter-env/lib/python3.12/site-packages/boto3/s3/transfer.py", line 452, in upload_file
+    future.result()
+  File "/home/ubuntu/velowetter-env/lib/python3.12/site-packages/s3transfer/futures.py", line 111, in result
+    return self._coordinator.result()
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/ubuntu/velowetter-env/lib/python3.12/site-packages/s3transfer/futures.py", line 287, in result
+    raise self._exception
+  File "/home/ubuntu/velowetter-env/lib/python3.12/site-packages/s3transfer/tasks.py", line 272, in _main
+    self._submit(transfer_future=transfer_future, **kwargs)
+  File "/home/ubuntu/velowetter-env/lib/python3.12/site-packages/s3transfer/upload.py", line 596, in _submit
+    upload_input_manager.provide_transfer_size(transfer_future)
+  File "/home/ubuntu/velowetter-env/lib/python3.12/site-packages/s3transfer/upload.py", line 245, in provide_transfer_size
+    self._osutil.get_file_size(transfer_future.meta.call_args.fileobj)
+  File "/home/ubuntu/velowetter-env/lib/python3.12/site-packages/s3transfer/utils.py", line 262, in get_file_size
+    return os.path.getsize(filename)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "<frozen genericpath>", line 62, in getsize
+FileNotFoundError: [Errno 2] No such file or directory: 'i'
+Traceback (most recent call last):
+  File "/home/ubuntu/velowetter/analysis.py", line 35, in <module>
+    main()
+  File "/home/ubuntu/velowetter/analysis.py", line 31, in main
+    s3.upload_file(file, bucket, file)
+  File "/home/ubuntu/velowetter-env/lib/python3.12/site-packages/botocore/context.py", line 123, in wrapper
+    return func(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^
+  File "/home/ubuntu/velowetter-env/lib/python3.12/site-packages/boto3/s3/inject.py", line 175, in upload_file
+    return transfer.upload_file(
+           ^^^^^^^^^^^^^^^^^^^^^
+  File "/home/ubuntu/velowetter-env/lib/python3.12/site-packages/boto3/s3/transfer.py", line 452, in upload_file
+    future.result()
+  File "/home/ubuntu/velowetter-env/lib/python3.12/site-packages/s3transfer/futures.py", line 111, in result
+    return self._coordinator.result()
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/ubuntu/velowetter-env/lib/python3.12/site-packages/s3transfer/futures.py", line 287, in result
+    raise self._exception
+  File "/home/ubuntu/velowetter-env/lib/python3.12/site-packages/s3transfer/tasks.py", line 272, in _main
+    self._submit(transfer_future=transfer_future, **kwargs)
+  File "/home/ubuntu/velowetter-env/lib/python3.12/site-packages/s3transfer/upload.py", line 596, in _submit
+    upload_input_manager.provide_transfer_size(transfer_future)
+  File "/home/ubuntu/velowetter-env/lib/python3.12/site-packages/s3transfer/upload.py", line 245, in provide_transfer_size
+    self._osutil.get_file_size(transfer_future.meta.call_args.fileobj)
+  File "/home/ubuntu/velowetter-env/lib/python3.12/site-packages/s3transfer/utils.py", line 262, in get_file_size
+    return os.path.getsize(filename)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "<frozen genericpath>", line 62, in getsize
+FileNotFoundError: [Errno 2] No such file or directory: 'i'
