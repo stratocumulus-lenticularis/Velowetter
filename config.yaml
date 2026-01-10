@@ -1,0 +1,12 @@
+data_sources:
+  static:
+    bike_counts2025: "https://data.stadt-zuerich.ch/dataset/ted_taz_verkehrszaehlungen_werte_fussgaenger_velo/download/2025_verkehrszaehlungen_werte_fussgaenger_velo.csv"
+    bike_counts2024: "https://data.stadt-zuerich.ch/dataset/ted_taz_verkehrszaehlungen_werte_fussgaenger_velo/download/2024_verkehrszaehlungen_werte_fussgaenger_velo.csv"
+    bike_counts2023: "https://data.stadt-zuerich.ch/dataset/ted_taz_verkehrszaehlungen_werte_fussgaenger_velo/download/2023_verkehrszaehlungen_werte_fussgaenger_velo.csv"
+  #stations: "/home/ubuntu/velowetter/data/taz.view_eco_standorte.csv"
+  dynamic:
+    bike_counts2026: "https://data.stadt-zuerich.ch/dataset/ted_taz_verkehrszaehlungen_werte_fussgaenger_velo/download/2026_verkehrszaehlungen_werte_fussgaenger_velo.csv"
+
+#sources:
+#https://www.stadt-zuerich.ch/geodaten/download/Standorte_der_automatischen_Fuss__und_Velozaehlungen?format=10008
+#https://data.stadt-zuerich.ch/dataset/ted_taz_verkehrszaehlungen_werte_fussgaenger_velo
