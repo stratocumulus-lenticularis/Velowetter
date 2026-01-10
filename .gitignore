@@ -1,5 +1,9 @@
 
 # --- Velowetter generated files ---
+data/
+*.csv
+*pdf
+
 output/
 *.png
 *.jpg
