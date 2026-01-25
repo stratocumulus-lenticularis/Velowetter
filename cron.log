@@ -56,3 +56,6 @@ Traceback (most recent call last):
            ^^^^^^^^^^^^^^^^^^^^^^^^^
   File "<frozen genericpath>", line 62, in getsize
 FileNotFoundError: [Errno 2] No such file or directory: 'i'
+Uploading index.html with Content-Type=text/html
+Uploading index.html with Content-Type=text/html
+Uploading index.html with Content-Type=text/html

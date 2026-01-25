@@ -4,7 +4,7 @@ from pathlib import Path
 import yaml
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
-data_dir = PROJECT_ROOT / "velowetter" / "data"
+data_dir = PROJECT_ROOT / "data"
 data_dir.mkdir(parents=True, exist_ok=True)
 
 
