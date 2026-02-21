@@ -14,7 +14,7 @@ def run():
     # choose stations by name 
     stations = [
         #("Bucheggplatz", "Höngg"),
-        #("Schulstrasse", "Bahnhof Oerlikon"),
+        ("Schulstrasse", "Bahnhof Oerlikon"),
         ("Lux-Guyer-Weg", "Wipkingen"),
     ]
 
@@ -54,9 +54,9 @@ def run():
  
     out.save_and_upload_plot( 
         df, 
-        local_path="output/bike_timeseries.png", 
+        output_dir="output/", 
         bucket="velowetter-site-mark", 
-        s3_key="plots/bike_timeseries.png" 
+        s3_prefix="plots" 
     )
     
     
