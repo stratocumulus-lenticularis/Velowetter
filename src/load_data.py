@@ -64,3 +64,61 @@ def load_bike_data(config_path: str, fk_ids: list[int]) -> pd.DataFrame:
     return pd.concat(dfs, ignore_index=True)
 
 
+def merge_counts_with_metadata(counts_df: pd.DataFrame, meta_df: pd.DataFrame) -> pd.DataFrame:
+    meta_small = meta_df[["id1", "bezeichnung", "richtung_out", "richtung_in"]].copy()
+
+    meta_small["id1"] = pd.to_numeric(meta_small["id1"], errors="coerce")
+
+    merged = counts_df.merge(
+        meta_small,
+        left_on="FK_STANDORT",
+        right_on="id1",
+        how="left"
+    )
+
+    return merged
+
+
+
+def aggregate_by_station_direction(merged_df: pd.DataFrame) -> pd.DataFrame:
+    """
+    Aggregate multiple instruments per (bezeichnung, richtung_out) and DATUM.
+    """
+    agg_cols = ["VELO_IN", "VELO_OUT", "FUSS_IN", "FUSS_OUT"]
+
+    # grouped = (
+        # merged_df
+        # .groupby(["bezeichnung", "richtung_out", "DATUM"], as_index=False)[agg_cols]
+        # .sum()
+        # .sort_values(["bezeichnung", "richtung_out", "DATUM"])
+    # )
+    # Schritt 2: Aggregation nach bezeichnung + richtung (IN/OUT kombiniert)
+    agg = (
+        merged_df.groupby(["bezeichnung", "richtung", "DATUM"])
+            [["VELO_IN", "VELO_OUT", "FUSS_IN", "FUSS_OUT"]]
+            .sum()
+            .reset_index()
+    )
+
+    return agg
+
+
+
+"""
+def combine_sensors(df: pd.DataFrame) -> pd.DataFrame:
+    
+    #Combine multiple sensors at the same Standort/direction into one time series.
+    #Aggregates VELO_IN, VELO_OUT, FUSS_IN, FUSS_OUT by summing.
+    
+    agg_cols = ["VELO_IN", "VELO_OUT", "FUSS_IN", "FUSS_OUT"]
+
+    df_combined = (
+        df.groupby("DATUM")[agg_cols]
+        .sum()
+        .sort_index()
+        .reset_index()
+    )
+
+    return df_combined
+    
+ """

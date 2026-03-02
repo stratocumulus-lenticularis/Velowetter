@@ -10,24 +10,27 @@ def load_station_metadata(path: str) -> pd.DataFrame:
     return df
       
 
-def build_station_mapping_by_out(meta_df: pd.DataFrame) -> dict:
-    """ 
-    Build mapping:
-    (bezeichnung, richtung_out) → [FK_STANDORT IDs]
-    Returns: 
-    { 
-        ("Bucheggplatz", "Höngg"): [16, 4237], 
-        ("Bucheggplatz", "---"): [???], 
-        ("Lux-Guyer-Weg", "Wipkingen"): [6, 2997], ... 
-    } 
-    """
-    
-    mapping = (
-        meta_df.groupby(["bezeichnung", "richtung_out"])["id1"]
-        .apply(lambda x: sorted(x.dropna().unique().tolist()))
-        .to_dict()
-    )
+def build_station_mapping_both_directions(meta_df: pd.DataFrame) -> dict:
+    mapping = {}
+
+    for _, row in meta_df.iterrows():
+        name = row["bezeichnung"]
+        fk = row["id1"]
+
+        # Richtung OUT als eigene Station
+        rout = row["richtung_out"]
+        if pd.notna(rout) and rout.strip() != "":
+            mapping.setdefault((name, rout), []).append(fk)
+
+        # Richtung IN als eigene Station
+        rin = row["richtung_in"]
+        if pd.notna(rin) and rin.strip() != "":
+            mapping.setdefault((name, rin), []).append(fk)
+
+    # Duplikate entfernen
+    mapping = {k: sorted(set(v)) for k, v in mapping.items()}
     return mapping
+
 
 
 
@@ -58,5 +61,4 @@ def get_fk_standort_for_multiple(mapping: dict, station_direction_list: list[tup
             print(f"Warning: no entry for {name} → {direction_out}")
 
     return sorted(set(ids))
-
 
