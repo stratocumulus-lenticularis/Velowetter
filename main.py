@@ -1,6 +1,8 @@
 #run with 
 # source /home/ubuntu/velowetter-env/bin/activate
 # python main.py
+import os 
+import yaml
 import pandas as pd
 
 from src.fetch import fetch_data
@@ -24,21 +26,86 @@ def run():
         ("Lux-Guyer-Weg", "Wipkingen"),
         ("Lux-Guyer-Weg", "Innenstadt")
     ]
-
     
+    with open("config.yaml", "r") as f: 
+        config = yaml.safe_load(f)
+
+    bucket = config["aws"]["bucket"]
+    s3_prefix = config["aws"]["s3_prefix"]
+    output_dir = config["output"]["local_output_dir"]
+    station_standorte_file = config["data_sources"]["stations"]
     
     # 1) Load metadata and build mapping
-    meta = lmd.load_station_metadata("data/taz.view_eco_standorte.csv")
+    meta = lmd.load_station_metadata(station_standorte_file)
     mapping = lmd.build_station_mapping_both_directions(meta)
 
     lmd.print_station_mapping(mapping)
+
+    #for potential loops over stations and directions
+    station_direction_list = lmd.get_all_station_directions(mapping)
+    station_direction_list = stations
+    #print(station_direction_list)
     
     #get ids of chosen stations
     # 3) Get all FK_STANDORT IDs for all these pairs 
-    fk_ids = lmd.get_fk_standort_for_multiple(mapping, stations)
+    #fk_ids = lmd.get_fk_standort_for_multiple(mapping, stations)
     
-    print("\nSelected FK_STANDORT IDs:", fk_ids)
+    #collect all aggregated data here
+    all_agg  = [] 
+    
+    for (station, direction) in station_direction_list:
+        print(f"processing {station} -> {direction}")
+        
+        fk_ids = mapping.get((station, direction), [])
+        if not fk_ids: 
+            print(f" No FK_STANDORT IDs for {station} → {direction}, skipping.") 
+            continue
+        print(" Selected FK_STANDORT IDs:", fk_ids)
 
+        # Load only the data for these IDs
+        counts = ld.load_bike_data("config.yaml", fk_ids)
+        if counts.empty:
+            print(f" No data for {station} → {direction}, skipping.")
+            continue
+            
+        # Merge with metadata
+        merged = ld.merge_counts_with_metadata(counts, meta)
+        
+        # Assign the logical direction explicitly
+        merged["richtung"] = direction
+        
+        # Keep only needed columns
+        all_agg.append(merged)
+        
+        del counts, merged
+        
+    # --- Combine everything into one DataFrame ---
+    if not all_agg: 
+         print("No data loaded.") 
+         return
+        
+        
+    full_df = pd.concat(all_agg, ignore_index=True)
+    print("Full dataset shape:", full_df.shape)
+    
+    # --- Aggregate globally ---
+    agg = ld.aggregate_by_station_direction(full_df)
+        
+    # 7 aggregate to daily and weekly sums
+    daily = da.make_daily_sums(agg)
+    weekly = da.make_weekly_sums(agg)
+       
+    out.plot_and_upload_plot( 
+        weekly, 
+        output_dir=output_dir, 
+        bucket=bucket, 
+        s3_prefix=s3_prefix 
+    )
+
+
+
+
+def dummy():
     # get all FK_STANDORT IDs (old + current) 
     #stations = ld.get_fk_standort(mapping, station_names)
     #stations = get_current_station_ids(meta, station_names)
@@ -83,7 +150,6 @@ def run():
 
     
     # 7 aggregate to daily and weekly sums
-    
     daily = da.make_daily_sums(agg)
     #weekly = da.make_weekly_sums(agg)
 
@@ -95,9 +161,9 @@ def run():
  
     out.plot_and_upload_plot( 
         daily, 
-        output_dir="output/", 
-        bucket="velowetter-site-mark", 
-        s3_prefix="plots" 
+        output_dir=output_dir, 
+        bucket=bucket, 
+        s3_prefix=s3_prefix 
     )
     
     

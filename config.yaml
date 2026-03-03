@@ -1,4 +1,13 @@
+aws:
+  bucket: "velowetter-site-mark"
+  s3_prefix: "plots"
+
+output:
+  local_output_dir: "output/"
+
 data_sources:
+  stations: "data/taz.view_eco_standorte.csv"
+
   static:
     bike_counts2025: "https://data.stadt-zuerich.ch/dataset/ted_taz_verkehrszaehlungen_werte_fussgaenger_velo/download/2025_verkehrszaehlungen_werte_fussgaenger_velo.csv"
     bike_counts2024: "https://data.stadt-zuerich.ch/dataset/ted_taz_verkehrszaehlungen_werte_fussgaenger_velo/download/2024_verkehrszaehlungen_werte_fussgaenger_velo.csv"

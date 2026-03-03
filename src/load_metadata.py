@@ -32,6 +32,8 @@ def build_station_mapping_both_directions(meta_df: pd.DataFrame) -> dict:
     return mapping
 
 
+def get_all_station_directions(mapping: dict) -> list[tuple[str, str]]:
+    return list(mapping.keys())
 
 
 def print_station_mapping(mapping):
