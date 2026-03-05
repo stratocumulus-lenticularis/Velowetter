@@ -19,7 +19,7 @@ def run():
     # choose stations by name 
     # 2) Define multiple Standort/direction pairs
     stations = [
-        #("Bucheggplatz", "Höngg"),
+        ("Bucheggplatz", "Höngg"),
         ("Hofwiesenstrasse", "Bucheggplatz"),
         ("Bucheggplatz","Hofwiesenstrasse"),
         ("Schulstrasse", "Bahnhof Oerlikon"),
@@ -71,13 +71,15 @@ def run():
         # Merge with metadata
         merged = ld.merge_counts_with_metadata(counts, meta)
         
-        # Assign the logical direction explicitly
-        merged["richtung"] = direction
-        
+
+        # Convert VELO_IN / VELO_OUT into long format with correct directions
+        long_df = da.wide_to_long_directional(merged)
         # Keep only needed columns
-        all_agg.append(merged)
+        all_agg.append(long_df)
         
-        del counts, merged
+        #all_agg.append(merged)
+        
+        del counts, merged, long_df
         
     # --- Combine everything into one DataFrame ---
     if not all_agg: 
@@ -89,12 +91,23 @@ def run():
     print("Full dataset shape:", full_df.shape)
     
     # --- Aggregate globally ---
-    agg = ld.aggregate_by_station_direction(full_df)
-        
+    #agg = ld.aggregate_by_station_direction(full_df)
+    agg = (
+    full_df.groupby(["bezeichnung", "richtung", "DATUM"], as_index=False)["VELO"]
+           .sum()
+    )
+
+    
+    print("aggregated")
+    
     # 7 aggregate to daily and weekly sums
     daily = da.make_daily_sums(agg)
+    
+    print("daily done")
     weekly = da.make_weekly_sums(agg)
-       
+    print("weekly done")   
+    
+    
     out.plot_and_upload_plot( 
         weekly, 
         output_dir=output_dir, 

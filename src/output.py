@@ -3,6 +3,7 @@ import matplotlib.pyplot as plt
 import pandas as pd
 import boto3
 import re
+import gc
 
 
 def slugify(text: str) -> str:
@@ -22,14 +23,16 @@ def plot_and_upload_plot(
 ):
     df = df.copy()
     df["DATUM"] = pd.to_datetime(df["DATUM"])
-    df["TOTAL"] = df["VELO_IN"].fillna(0) + df["VELO_OUT"].fillna(0)
+
+    if "VELO" not in df.columns:
+        raise ValueError("Expected column 'VELO' in df (long format with direction).")
 
     os.makedirs(output_dir, exist_ok=True)
     s3 = boto3.client("s3")
 
-    png_files = []  # (bezeichnung, richtung_out, filename)
+    png_files = []  # (bezeichnung, richtung, filename)
 
-    # --- NEW: group by logical station, not FK_STANDORT ---
+    # group by logical station + direction
     groups = df.groupby(["bezeichnung", "richtung"])
 
     for (name, direction), sub in groups:
@@ -42,17 +45,18 @@ def plot_and_upload_plot(
         png_s3_key = f"{s3_prefix}/{png_filename}"
 
         plt.figure(figsize=(14, 7))
-        plt.plot(sub["DATUM"], sub["TOTAL"], label=f"{name} → {direction}")
+        plt.plot(sub["DATUM"], sub["VELO"], label=f"{name} → {direction}")
 
         plt.title(f"Bike Counts – {name} → {direction}")
         plt.xlabel("Date")
-        plt.ylabel("Total Bikes (In + Out)")
+        plt.ylabel("Bikes per direction")
         plt.grid(True)
         plt.legend()
         plt.tight_layout()
 
         plt.savefig(png_local_path, dpi=150)
-        plt.close()
+        plt.close("all")
+        gc.collect()
 
         png_files.append((name, direction, png_filename))
 
@@ -65,7 +69,7 @@ def plot_and_upload_plot(
                 CacheControl="no-cache"
             )
 
-    # --- HTML generation stays the same, only captions change ---
+    # --- HTML generation stays almost the same ---
     html_local_path = os.path.join(output_dir, html_filename)
     html_s3_key = f"{s3_prefix}/{html_filename}"
 
@@ -152,5 +156,6 @@ def plot_and_upload_plot(
     print("All station-direction plots generated.")
     print(f"HTML page saved to {html_local_path}")
     print(f"Uploaded to s3://{bucket}/{s3_prefix}/")
+
 
 

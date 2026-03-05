@@ -1,25 +1,13 @@
 import yaml
+import os
 import pandas as pd
-
 
 def load_bike_data(config_path: str, fk_ids: list[int]) -> pd.DataFrame:
     """
     Load multi-year Zürich bike count data from URLs defined in config.yaml.
     Only selected stations are returned.
-
-    Parameters
-    ----------
-    config_path : str
-        Path to config.yaml
-    stations : list[int]
-        List of station IDs (ZST) to load
-
-    Returns
-    -------
-    pd.DataFrame
-        Combined dataframe with all selected stations and a 'year' column
     """
-    
+
     DTYPES = {
         "FK_STANDORT": "int32",
         "VELO_IN": "float32",
@@ -29,7 +17,6 @@ def load_bike_data(config_path: str, fk_ids: list[int]) -> pd.DataFrame:
     }
 
     USECOLS = ["DATUM", "FK_STANDORT", "VELO_IN", "VELO_OUT", "FUSS_IN", "FUSS_OUT"]
-    
 
     # --- load config ---
     with open(config_path, "r") as f:
@@ -39,29 +26,45 @@ def load_bike_data(config_path: str, fk_ids: list[int]) -> pd.DataFrame:
     dynamic = cfg["data_sources"].get("dynamic", {})
     sources = {**static, **dynamic}
 
-    # --- load data ---
     dfs = []
-    for name, url in sources.items():
-        df = pd.read_csv(
-            url,
-            dtype=DTYPES, 
-            parse_dates=["DATUM"],
-            usecols=USECOLS
-        )
-        #df["DATUM"] = pd.to_datetime(df["DATUM"], errors="coerce")
-        
-        #print(f"Columns in {name}: {df.columns.tolist()}") # DEBUG
-        #Columns in bike_counts2025: ['FK_STANDORT', 'DATUM', 'VELO_IN', 'VELO_OUT', 'FUSS_IN', 'FUSS_OUT', 'OST', 'NORD']
 
-        # filter early to reduce memory
+    for name, url in sources.items():
+
+        # Local cache filename
+        parquet_path = f"cache/{name}.parquet"
+        os.makedirs("cache", exist_ok=True)
+
+        # --- If parquet exists: load it directly ---
+        if os.path.exists(parquet_path):
+            df = pd.read_parquet(
+                parquet_path,
+                columns=USECOLS
+            )
+        else:
+            # --- Otherwise: load CSV and convert once ---
+            print(f"Converting CSV → Parquet for {name} ...")
+
+            df = pd.read_csv(
+                url,
+                dtype=DTYPES,
+                parse_dates=["DATUM"],
+                usecols=USECOLS
+            )
+
+            # Save for future runs
+            df.to_parquet(parquet_path, index=False)
+
+        # --- Filter early ---
         df = df[df["FK_STANDORT"].isin(fk_ids)]
-        
+
         dfs.append(df)
 
     if not dfs:
         return pd.DataFrame()
 
     return pd.concat(dfs, ignore_index=True)
+
+
 
 
 def merge_counts_with_metadata(counts_df: pd.DataFrame, meta_df: pd.DataFrame) -> pd.DataFrame:
@@ -80,27 +83,33 @@ def merge_counts_with_metadata(counts_df: pd.DataFrame, meta_df: pd.DataFrame) -
 
 
 
-def aggregate_by_station_direction(merged_df: pd.DataFrame) -> pd.DataFrame:
+def aggregate_by_station_direction_notusedanymore(merged_df: pd.DataFrame) -> pd.DataFrame:
     """
-    Aggregate multiple instruments per (bezeichnung, richtung_out) and DATUM.
+    Convert VELO_IN/VELO_OUT into directional VELO values using richtung_in/out,
+    then aggregate per (bezeichnung, richtung, DATUM).
     """
-    agg_cols = ["VELO_IN", "VELO_OUT", "FUSS_IN", "FUSS_OUT"]
 
-    # grouped = (
-        # merged_df
-        # .groupby(["bezeichnung", "richtung_out", "DATUM"], as_index=False)[agg_cols]
-        # .sum()
-        # .sort_values(["bezeichnung", "richtung_out", "DATUM"])
-    # )
-    # Schritt 2: Aggregation nach bezeichnung + richtung (IN/OUT kombiniert)
+    in_part = (
+        merged_df[["bezeichnung", "richtung_in", "DATUM", "VELO_IN"]]
+        .rename(columns={"richtung_in": "richtung", "VELO_IN": "VELO"})
+    )
+
+    out_part = (
+        merged_df[["bezeichnung", "richtung_out", "DATUM", "VELO_OUT"]]
+        .rename(columns={"richtung_out": "richtung", "VELO_OUT": "VELO"})
+    )
+
+    long_df = pd.concat([in_part, out_part], ignore_index=True)
+
     agg = (
-        merged_df.groupby(["bezeichnung", "richtung", "DATUM"])
-            [["VELO_IN", "VELO_OUT", "FUSS_IN", "FUSS_OUT"]]
-            .sum()
-            .reset_index()
+        long_df.groupby(["bezeichnung", "richtung", "DATUM"], as_index=False)["VELO"]
+               .sum()
     )
 
     return agg
+
+
+
 
 
 
