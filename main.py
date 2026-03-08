@@ -4,8 +4,10 @@
 
 # run with:
 # source /home/ubuntu/velowetter-env/bin/activate
-# python main.py
+# python main.py             # downloads fresh dynamic data
+# python main.py --no-fetch  # skips download, uses cached data
 
+import sys
 import yaml
 import pandas as pd
 
@@ -16,7 +18,7 @@ import src.output as out
 import src.data_aggregation as da
 
 
-def run():
+def run(fetch=True):
     stations = [
         ("Bucheggplatz", "Höngg"),
         ("Stadttunnel Nord", "Kasernenstrasse"),
@@ -33,6 +35,13 @@ def run():
     s3_prefix = config["aws"]["s3_prefix"]
     output_dir = config["output"]["local_output_dir"]
     station_standorte_file = config["data_sources"]["stations"]
+
+    # Download fresh dynamic data (current year) unless suppressed
+    if fetch:
+        print("Downloading dynamic data...")
+        fetch_data(static=False, dynamic=True)
+    else:
+        print("Skipping download, using cached data.")
 
     # Load metadata and build station -> FK_STANDORT mapping
     meta = lmd.load_station_metadata(station_standorte_file)
@@ -93,6 +102,5 @@ def run():
 
 
 if __name__ == "__main__":
-    run()
-
-
+    fetch = "--no-fetch" not in sys.argv
+    run(fetch=fetch)

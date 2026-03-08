@@ -28,9 +28,15 @@ def load_bike_data(config_path: str, fk_ids: list[int]) -> pd.DataFrame:
 
     dfs = []
 
+    dynamic_names = set(cfg["data_sources"].get("dynamic", {}).keys())
+
     for name, url in sources.items():
         parquet_path = f"cache/{name}.parquet"
         os.makedirs("cache", exist_ok=True)
+
+        # Always refresh dynamic sources (current year CSV was just downloaded)
+        if name in dynamic_names and os.path.exists(parquet_path):
+            os.remove(parquet_path)
 
         if not os.path.exists(parquet_path):
             print(f"Converting CSV → Parquet for {name} ...")
@@ -74,7 +80,3 @@ def merge_counts_with_metadata(counts_df: pd.DataFrame, meta_df: pd.DataFrame) -
     )
 
     return merged
-    
-
-
-
