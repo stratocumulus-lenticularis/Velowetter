@@ -15,14 +15,20 @@ import src.data_aggregation as da
 #from src.visualize import plot_daily_counts
 #from src.publish import upload_output
 
+import unicodedata
+
+def normalize(s):
+    return unicodedata.normalize("NFC", s)
+
+
 def run():
     # choose stations by name 
     # 2) Define multiple Standort/direction pairs
     stations = [
         ("Bucheggplatz", "Höngg"),
-        ("Hofwiesenstrasse", "Bucheggplatz"),
+#        ("Hofwiesenstrasse", "Bucheggplatz"),
         ("Bucheggplatz","Hofwiesenstrasse"),
-        ("Schulstrasse", "Bahnhof Oerlikon"),
+ #       ("Schulstrasse", "Bahnhof Oerlikon"),
         ("Lux-Guyer-Weg", "Wipkingen"),
         ("Lux-Guyer-Weg", "Innenstadt")
     ]
@@ -107,12 +113,30 @@ def run():
     weekly = da.make_weekly_sums(agg)
     print("weekly done")   
     
+    daily["DATUM"] = pd.to_datetime(daily["DATUM"], errors="coerce")
+    weekly["DATUM"] = pd.to_datetime(weekly["DATUM"], errors="coerce")
+
+    daily = daily.sort_values(["bezeichnung", "richtung", "DATUM"])
+    weekly = weekly.sort_values(["bezeichnung", "richtung", "DATUM"])
     
-    out.plot_and_upload_plot( 
-        weekly, 
-        output_dir=output_dir, 
-        bucket=bucket, 
-        s3_prefix=s3_prefix 
+
+    # out.plot_and_upload_plot( 
+        # weekly, 
+        # output_dir=output_dir, 
+        # bucket=bucket, 
+        # s3_prefix=s3_prefix 
+    # )
+    
+    del agg
+    out.plot_and_upload_interactive(
+        df_daily=daily,
+        df_weekly=weekly,
+        make_daily_plot=out.make_daily_plot,
+        make_weekly_plot=out.make_weekly_plot,
+        output_dir=output_dir,
+        bucket=bucket,
+        s3_prefix=s3_prefix,
+        html_filename="index.html"
     )
 
 
