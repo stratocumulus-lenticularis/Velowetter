@@ -31,7 +31,6 @@ def plot_and_upload_interactive(
         .values.tolist()
     )
 
-    # Build compact data dict for JS
     data_dict = {}
     for station, direction in station_dir_pairs:
         ddf = df_daily[
@@ -46,11 +45,13 @@ def plot_and_upload_interactive(
 
         data_dict[f"{station}|{direction}|daily"] = {
             "x": ddf["DATUM"].dt.strftime("%Y-%m-%d").tolist(),
-            "y": ddf["VELO"].tolist()
+            "y": ddf["VELO"].tolist(),
+            "trend": ddf["VELO_TREND"].tolist() if "VELO_TREND" in ddf.columns else None
         }
         data_dict[f"{station}|{direction}|weekly"] = {
             "x": wdf["DATUM"].dt.strftime("%Y-%m-%d").tolist(),
-            "y": wdf["VELO"].tolist()
+            "y": wdf["VELO"].tolist(),
+            "trend": wdf["VELO_TREND"].tolist() if "VELO_TREND" in wdf.columns else None
         }
 
     stations = sorted({s for s, _ in station_dir_pairs})
@@ -104,12 +105,31 @@ function updatePlot() {{
     const agg = document.getElementById("aggSelect").value;
     const d = FIGURES[`${{station}}|${{direction}}|${{agg}}`];
     if (!d) {{ document.getElementById("plotContainer").innerHTML = "<p>No data found</p>"; return; }}
-    Plotly.newPlot("plotContainer", [{{
-        x: d.x, y: d.y, type: "scatter", mode: "lines"
-    }}], {{
+
+    const traces = [
+        {{
+            x: d.x, y: d.y,
+            type: "scatter", mode: "lines",
+            name: "Observed",
+            line: {{ color: "steelblue", width: 1 }},
+            opacity: 0.6
+        }}
+    ];
+    if (d.trend) {{
+        traces.push({{
+            x: d.x, y: d.trend,
+            type: "scatter", mode: "lines",
+            name: "Trend (1yr LOESS)",
+            line: {{ color: "crimson", width: 2.5 }},
+            connectgaps: false
+        }});
+    }}
+
+    Plotly.newPlot("plotContainer", traces, {{
         xaxis: {{ type: "date", title: "Date" }},
         yaxis: {{ title: "Bikes" }},
-        title: `${{station}} → ${{direction}} (${{agg}})`
+        title: `${{station}} \u2192 ${{direction}} (${{agg}})`,
+        legend: {{ orientation: "h", y: -0.15 }}
     }}, {{responsive: true}});
 }}
 
@@ -136,7 +156,4 @@ window.onload = updateDirections;
         )
 
     print(f"Interactive HTML uploaded to s3://{bucket}/{s3_key}")
-    
-    
-    
     

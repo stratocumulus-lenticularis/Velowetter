@@ -1,7 +1,3 @@
-#run with 
-# source /home/ubuntu/velowetter-env/bin/activate
-# python main.py
-
 # run with:
 # source /home/ubuntu/velowetter-env/bin/activate
 # python main.py             # downloads fresh dynamic data
@@ -20,6 +16,7 @@ import src.data_aggregation as da
 
 def run(fetch=True):
     stations = [
+        ("Hofwiesenstrasse", "Bucheggplatz"),
         ("Bucheggplatz", "Höngg"),
         ("Stadttunnel Nord", "Kasernenstrasse"),
         ("Stadttunnel Süd (Barometer)", "beide Richtungen"),
@@ -78,6 +75,8 @@ def run(fetch=True):
     )
     del full_df
 
+    agg = da.fill_missing_timesteps(agg, freq="15min")
+
     # Aggregate to daily and weekly sums
     daily = da.make_daily_sums(agg)
     weekly = da.make_weekly_sums(agg)
@@ -88,6 +87,10 @@ def run(fetch=True):
 
     daily = daily.sort_values(["bezeichnung", "richtung", "DATUM"])
     weekly = weekly.sort_values(["bezeichnung", "richtung", "DATUM"])
+
+    # Add LOESS trend column (1-year window)
+    daily = da.add_loess_trend(daily, window_days=1460)
+    weekly = da.add_loess_trend(weekly, window_days=1460)
 
     print(f"Daily shape: {daily.shape}, Weekly shape: {weekly.shape}")
 
@@ -104,3 +107,4 @@ def run(fetch=True):
 if __name__ == "__main__":
     fetch = "--no-fetch" not in sys.argv
     run(fetch=fetch)
+    
