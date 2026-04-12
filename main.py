@@ -14,15 +14,22 @@ import src.output as out
 import src.data_aggregation as da
 
 
-def run(fetch=True):
+def run(fetch=True, list_stations=False):
     stations = [
-        ("Hofwiesenstrasse", "Bucheggplatz"),
-        ("Bucheggplatz", "Höngg"),
-        ("Stadttunnel Nord", "Kasernenstrasse"),
-        ("Stadttunnel Süd (Barometer)", "beide Richtungen"),
-        ("Bucheggplatz", "Hofwiesenstrasse"),
-        ("Lux-Guyer-Weg", "Wipkingen"),
-        ("Lux-Guyer-Weg", "Innenstadt")
+        "Bertastrasse",
+        "Bucheggplatz",
+        "Hardbrücke Nord (Seite Altstetten)",
+        "Hofwiesenstrasse",
+#        "Letten / Dynamo", #seems to be empty
+        "Lux-Guyer-Weg",
+        "Mythenquai",
+        "Scheuchzerstrasse",
+        "Stadttunnel Nord",
+        "Stadttunnel Süd (Barometer)",
+        "Zollstrasse",
+        "Quaibrücke Nord (Limmatseite)",       
+        "Quaibrücke Süd (Seeseite)",
+        
     ]
 
     with open("config.yaml", "r") as f:
@@ -44,14 +51,14 @@ def run(fetch=True):
     meta = lmd.load_station_metadata(station_standorte_file)
     mapping = lmd.build_station_mapping_both_directions(meta)
 
-    # Collect all FK_STANDORT IDs across all stations in one go
-    all_fk_ids = []
-    for (station, direction) in stations:
-        ids = mapping.get((station, direction), [])
-        if not ids:
-            print(f"Warning: no FK_STANDORT IDs for {station} -> {direction}, skipping.")
-        all_fk_ids.extend(ids)
-    all_fk_ids = sorted(set(all_fk_ids))
+    if list_stations:
+        lmd.print_all_stations(mapping)
+
+    lmd.print_stations_for_selection(mapping, stations) 
+    
+
+    # Collect all FK_STANDORT IDs for all directions of each station
+    all_fk_ids = lmd.get_fk_ids_for_stations(mapping, stations)  # new helper, see below
 
     if not all_fk_ids:
         print("No stations found in mapping, exiting.")
@@ -61,21 +68,25 @@ def run(fetch=True):
     print(f"Loading data for {len(all_fk_ids)} FK_STANDORT IDs...")
     counts = ld.load_bike_data("config.yaml", all_fk_ids)
     merged = ld.merge_counts_with_metadata(counts, meta)
+    merged.drop(columns=["FK_STANDORT", "id1"], inplace=True)
     del counts
 
     full_df = da.wide_to_long_directional(merged)
     del merged
+    full_df["bezeichnung"] = full_df["bezeichnung"].astype("category")
+    full_df["richtung"] = full_df["richtung"].astype("category")
+    full_df["VELO"] = full_df["VELO"].astype("float32")
 
     print(f"Full dataset shape: {full_df.shape}")
 
     # Aggregate to 15-min sums per (bezeichnung, richtung, DATUM)
     agg = (
-        full_df.groupby(["bezeichnung", "richtung", "DATUM"], as_index=False)["VELO"]
+        full_df.groupby(["bezeichnung", "richtung", "DATUM"], as_index=False, observed=True)["VELO"]
                .sum()
     )
     del full_df
 
-    agg = da.fill_missing_timesteps(agg, freq="15min")
+    agg = da.fill_missing_timesteps(agg, freq="1h")
 
     # Aggregate to daily and weekly sums
     daily = da.make_daily_sums(agg)
@@ -92,7 +103,10 @@ def run(fetch=True):
     daily = da.add_loess_trend(daily, window_days=1460)
     weekly = da.add_loess_trend(weekly, window_days=1460)
 
-    print(f"Daily shape: {daily.shape}, Weekly shape: {weekly.shape}")
+    #some debugging
+    #print(f"daily shape: {daily.shape}, date range: {daily['DATUM'].min()} → {daily['DATUM'].max()}")
+    #print(f"weekly shape: {weekly.shape}, date range: {weekly['DATUM'].min()} → {weekly['DATUM'].max()}")
+
 
     out.plot_and_upload_interactive(
         df_daily=daily,
@@ -106,5 +120,6 @@ def run(fetch=True):
 
 if __name__ == "__main__":
     fetch = "--no-fetch" not in sys.argv
-    run(fetch=fetch)
+    list_stations = "--list-stations" in sys.argv
+    run(fetch=fetch, list_stations=list_stations)
     

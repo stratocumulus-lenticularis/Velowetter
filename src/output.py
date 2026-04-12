@@ -141,10 +141,13 @@ window.onload = updateDirections;
 </body>
 </html>"""
 
+    
     html_local_path = os.path.join(output_dir, html_filename)
+    print(f"Writing HTML to: {os.path.abspath(html_local_path)}")
     with open(html_local_path, "w", encoding="utf-8") as f:
         f.write(html)
 
+    print(f"Uploading {html_filename} to s3://{bucket}/{s3_prefix}/{html_filename} ...")
     s3_key = f"{s3_prefix}/{html_filename}"
     with open(html_local_path, "rb") as f:
         s3.put_object(
@@ -152,8 +155,9 @@ window.onload = updateDirections;
             Key=s3_key,
             Body=f,
             ContentType="text/html",
-            CacheControl="no-cache"
+            CacheControl="no-cache, no-store, must-revalidate"
         )
+    print("Upload complete.")
 
-    print(f"Interactive HTML uploaded to s3://{bucket}/{s3_key}")
+    #print(f"Interactive HTML uploaded to s3://{bucket}/{s3_key}")
     

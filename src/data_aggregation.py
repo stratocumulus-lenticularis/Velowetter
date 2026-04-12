@@ -6,13 +6,12 @@ def make_daily_sums(df: pd.DataFrame) -> pd.DataFrame:
     Daily sums per (bezeichnung, richtung), using VELO only.
     RAM-efficient: resample per direction.
     """
-
-    df = df.copy()
+    
     df["DATUM"] = pd.to_datetime(df["DATUM"])
 
     parts = []
 
-    for (bez, richt), df_sub in df.groupby(["bezeichnung", "richtung"]):
+    for (bez, richt), df_sub in df.groupby(["bezeichnung", "richtung"], observed=True):
         df_sub = df_sub.set_index("DATUM").sort_index()
 
         daily = df_sub[["VELO"]].resample("1D").agg(
@@ -37,13 +36,12 @@ def make_weekly_sums(df: pd.DataFrame) -> pd.DataFrame:
     Weekly sums per (bezeichnung, richtung), using VELO only.
     RAM-efficient: resample per direction.
     """
-
-    df = df.copy()
+    
     df["DATUM"] = pd.to_datetime(df["DATUM"])
 
     parts = []
 
-    for (bez, richt), df_sub in df.groupby(["bezeichnung", "richtung"]):
+    for (bez, richt), df_sub in df.groupby(["bezeichnung", "richtung"], observed=True):
         df_sub = df_sub.set_index("DATUM").sort_index()
 
         weekly = df_sub[["VELO"]].resample("W-MON").agg(
@@ -63,6 +61,14 @@ def make_weekly_sums(df: pd.DataFrame) -> pd.DataFrame:
 
 
 def wide_to_long_directional(df: pd.DataFrame) -> pd.DataFrame:
+    return pd.concat([
+        df[["bezeichnung", "richtung_in", "DATUM", "VELO_IN"]]
+          .rename(columns={"richtung_in": "richtung", "VELO_IN": "VELO"}),
+        df[["bezeichnung", "richtung_out", "DATUM", "VELO_OUT"]]
+          .rename(columns={"richtung_out": "richtung", "VELO_OUT": "VELO"}),
+    ], ignore_index=True)
+
+def wide_to_long_directional_old(df: pd.DataFrame) -> pd.DataFrame:
     """
     Convert VELO_IN/VELO_OUT into long format with correct directions.
     RAM-safe because it operates on one station at a time.
@@ -116,18 +122,18 @@ def add_loess_trend(df: pd.DataFrame, window_days: int = 1460) -> pd.DataFrame:
     Add a 'VELO_TREND' column to a daily or weekly dataframe by applying
     LOESS smoothing per (bezeichnung, richtung) group.
     """
-    df = df.copy()
+    
     df["VELO"] = df["VELO"].astype("float64")
     df["VELO_TREND"] = float("nan")
     df["VELO_TREND"] = df["VELO_TREND"].astype("float64")
 
     results = {}
-    for (bez, richt), group in df.groupby(["bezeichnung", "richtung"]):
+    for (bez, richt), group in df.groupby(["bezeichnung", "richtung"], observed=True):
         group = group.sort_values("DATUM")
         trend = loess_smooth(group["DATUM"], group["VELO"], window_days=window_days)
         results.update(dict(zip(group.index, trend)))
 
-    df["VELO_TREND"] = pd.Series(results, dtype="float64")
+    df["VELO_TREND"] = pd.Series(results, dtype="float32")
     return df
 
 
@@ -139,7 +145,7 @@ def fill_missing_timesteps(df: pd.DataFrame, freq: str = "15min") -> pd.DataFram
     """
     parts = []
 
-    for (bez, richt), group in df.groupby(["bezeichnung", "richtung"]):
+    for (bez, richt), group in df.groupby(["bezeichnung", "richtung"], observed=True):
         group = group.set_index("DATUM").sort_index()
 
         full_grid = pd.date_range(
