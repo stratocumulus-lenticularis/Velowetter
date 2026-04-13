@@ -1,63 +1,6 @@
+import numpy as np
 import pandas as pd
-
-
-def make_daily_sums(df: pd.DataFrame) -> pd.DataFrame:
-    """
-    Daily sums per (bezeichnung, richtung), using VELO only.
-    RAM-efficient: resample per direction.
-    """
-    
-    df["DATUM"] = pd.to_datetime(df["DATUM"])
-
-    parts = []
-
-    for (bez, richt), df_sub in df.groupby(["bezeichnung", "richtung"], observed=True):
-        df_sub = df_sub.set_index("DATUM").sort_index()
-
-        daily = df_sub[["VELO"]].resample("1D").agg(
-            VELO=("VELO", "sum"),
-            OBS=("VELO", "count")
-        )
-        daily["GAP"] = daily["OBS"] == 0
-        daily["VELO"] = daily["VELO"].where(~daily["GAP"], other=float("nan"))
-
-        daily["bezeichnung"] = bez
-        daily["richtung"] = richt
-        daily = daily.reset_index()
-
-        parts.append(daily)
-
-    return pd.concat(parts, ignore_index=True)
-
-
-
-def make_weekly_sums(df: pd.DataFrame) -> pd.DataFrame:
-    """
-    Weekly sums per (bezeichnung, richtung), using VELO only.
-    RAM-efficient: resample per direction.
-    """
-    
-    df["DATUM"] = pd.to_datetime(df["DATUM"])
-
-    parts = []
-
-    for (bez, richt), df_sub in df.groupby(["bezeichnung", "richtung"], observed=True):
-        df_sub = df_sub.set_index("DATUM").sort_index()
-
-        weekly = df_sub[["VELO"]].resample("W-MON").agg(
-            VELO=("VELO", "sum"),
-            OBS=("VELO", "count")
-        )
-        weekly["GAP"] = weekly["OBS"] == 0
-        weekly["VELO"] = weekly["VELO"].where(~weekly["GAP"], other=float("nan"))
-
-        weekly["bezeichnung"] = bez
-        weekly["richtung"] = richt
-        weekly = weekly.reset_index()
-
-        parts.append(weekly)
-
-    return pd.concat(parts, ignore_index=True)
+from statsmodels.nonparametric.smoothers_lowess import lowess
 
 
 def wide_to_long_directional(df: pd.DataFrame) -> pd.DataFrame:
@@ -68,35 +11,65 @@ def wide_to_long_directional(df: pd.DataFrame) -> pd.DataFrame:
           .rename(columns={"richtung_out": "richtung", "VELO_OUT": "VELO"}),
     ], ignore_index=True)
 
-def wide_to_long_directional_old(df: pd.DataFrame) -> pd.DataFrame:
-    """
-    Convert VELO_IN/VELO_OUT into long format with correct directions.
-    RAM-safe because it operates on one station at a time.
-    """
 
-    in_part = (
-        df[["bezeichnung", "richtung_in", "DATUM", "VELO_IN"]]
-        .rename(columns={"richtung_in": "richtung", "VELO_IN": "VELO"})
+def fill_missing_timesteps(df: pd.DataFrame, freq: str = "15min") -> pd.DataFrame:
+    """
+    For each (bezeichnung, richtung) group, reindex to a complete time grid
+    at `freq` resolution between the group's first and last timestamp.
+    Missing timesteps are filled with NaN for VELO.
+    """
+    parts = []
+    for (bez, richt), group in df.groupby(["bezeichnung", "richtung"], observed=True):
+        group = group.set_index("DATUM").sort_index()
+        full_grid = pd.date_range(start=group.index.min(), end=group.index.max(), freq=freq)
+        group = group.reindex(full_grid)
+        group["bezeichnung"] = bez
+        group["richtung"] = richt
+        group.index.name = "DATUM"
+        parts.append(group.reset_index())
+    return pd.concat(parts, ignore_index=True)
+
+
+def _resample_group(df_sub: pd.DataFrame, col: str = "VELO") -> pd.DataFrame:
+    """Shared resample logic for daily and weekly aggregation."""
+    return df_sub[[col]].resample("1D").agg(
+        VELO=(col, "sum"),
+        OBS=(col, "count"),
     )
 
-    out_part = (
-        df[["bezeichnung", "richtung_out", "DATUM", "VELO_OUT"]]
-        .rename(columns={"richtung_out": "richtung", "VELO_OUT": "VELO"})
-    )
 
-    long_df = pd.concat([in_part, out_part], ignore_index=True)
-    return long_df
+def _aggregate(df: pd.DataFrame, freq: str) -> pd.DataFrame:
+    """
+    Resample VELO to `freq` per (bezeichnung, richtung).
+    Gaps (zero observations) are marked NaN.
+    """
+    df["DATUM"] = pd.to_datetime(df["DATUM"])
+    parts = []
+    for (bez, richt), df_sub in df.groupby(["bezeichnung", "richtung"], observed=True):
+        df_sub = df_sub.set_index("DATUM").sort_index()
+        agg = df_sub[["VELO"]].resample(freq).agg(
+            VELO=("VELO", "sum"),
+            OBS=("VELO", "count"),
+        )
+        agg["GAP"] = agg["OBS"] == 0
+        agg["VELO"] = agg["VELO"].where(~agg["GAP"], other=float("nan"))
+        agg["bezeichnung"] = bez
+        agg["richtung"] = richt
+        parts.append(agg.reset_index())
+    return pd.concat(parts, ignore_index=True)
 
 
+def make_daily_sums(df: pd.DataFrame) -> pd.DataFrame:
+    return _aggregate(df, freq="1D")
 
-import numpy as np
-from statsmodels.nonparametric.smoothers_lowess import lowess
+
+def make_weekly_sums(df: pd.DataFrame) -> pd.DataFrame:
+    return _aggregate(df, freq="W-MON")
 
 
 def loess_smooth(dates: pd.Series, values: pd.Series, window_days: int = 365) -> list:
     """
     Apply LOESS smoothing with a window of `window_days` over the full date range.
-    frac = window_days / total_days, clipped to a sensible minimum.
     Returns smoothed y values as a list (None where input was NaN).
     """
     total_days = (dates.max() - dates.min()).days
@@ -111,21 +84,15 @@ def loess_smooth(dates: pd.Series, values: pd.Series, window_days: int = 365) ->
 
     smoothed = np.full(len(y), np.nan)
     smoothed[mask] = lowess(y[mask], x[mask], frac=frac, return_sorted=False)
-
     return [round(float(v), 1) if not np.isnan(v) else None for v in smoothed]
-
-
 
 
 def add_loess_trend(df: pd.DataFrame, window_days: int = 1460) -> pd.DataFrame:
     """
-    Add a 'VELO_TREND' column to a daily or weekly dataframe by applying
-    LOESS smoothing per (bezeichnung, richtung) group.
+    Add a VELO_TREND column by applying LOESS smoothing per (bezeichnung, richtung).
     """
-    
     df["VELO"] = df["VELO"].astype("float64")
-    df["VELO_TREND"] = float("nan")
-    df["VELO_TREND"] = df["VELO_TREND"].astype("float64")
+    df["VELO_TREND"] = pd.Series(dtype="float64")
 
     results = {}
     for (bez, richt), group in df.groupby(["bezeichnung", "richtung"], observed=True):
@@ -135,30 +102,3 @@ def add_loess_trend(df: pd.DataFrame, window_days: int = 1460) -> pd.DataFrame:
 
     df["VELO_TREND"] = pd.Series(results, dtype="float32")
     return df
-
-
-def fill_missing_timesteps(df: pd.DataFrame, freq: str = "15min") -> pd.DataFrame:
-    """
-    For each (bezeichnung, richtung) group, reindex to a complete time grid
-    at `freq` resolution between the group's first and last timestamp.
-    Missing timesteps are filled with NaN for VELO.
-    """
-    parts = []
-
-    for (bez, richt), group in df.groupby(["bezeichnung", "richtung"], observed=True):
-        group = group.set_index("DATUM").sort_index()
-
-        full_grid = pd.date_range(
-            start=group.index.min(),
-            end=group.index.max(),
-            freq=freq
-        )
-
-        group = group.reindex(full_grid)
-        group["bezeichnung"] = bez
-        group["richtung"] = richt
-        group.index.name = "DATUM"
-        parts.append(group.reset_index())
-
-    return pd.concat(parts, ignore_index=True)
-    

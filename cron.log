@@ -33,3 +33,43 @@ Converting CSV → Parquet for bike_counts2026 ...
 Full dataset shape: (3257368, 4)
 Daily shape: (37470, 7), Weekly shape: (5370, 7)
 Interactive HTML uploaded to s3://velowetter-site-mark/plots/index.html
+Downloading dynamic data...
+Downloaded bike_counts2026 → /home/ubuntu/velowetter/data/bike_counts2026.csv
+
+Selected stations and directions:
+
+  Station                                  Direction                      IDs
+  ---------------------------------------- ------------------------------ ---------------
+  Bertastrasse                             Aussersihl                     [12, 3920, 3923]
+                                           Wiedikon                       [12, 3920, 3923]
+  Bucheggplatz                             Hofwiesenstrasse               [16, 3012, 4237]
+                                           Höngg                          [16, 3012, 4237]
+  Fischerweg                               Innenstadt                     [52]
+                                           Stadtgrenze                    [52]
+  Hardbrücke Nord (Seite Altstetten)       Escher-Wyss-Platz              [732]
+                                           Hardplatz                      [732]
+  Hofwiesenstrasse                         ---                            [13, 2977, 3930, 4258]
+                                           Bucheggplatz                   [13, 2977, 3930, 4258]
+  Lux-Guyer-Weg                            Innenstadt                     [5, 2997, 3917, 3926]
+                                           Wipkingen                      [5, 2997, 3917, 3926]
+  Mythenquai                               Innenstadt                     [6, 3919, 3927, 5002]
+                                           Wollishofen                    [6, 3919, 3927, 5002]
+  Scheuchzerstrasse                        Innenstadt                     [8, 2993, 3918, 3925]
+                                           Irchel                         [8, 2993, 3918, 3925]
+  Stadttunnel Nord                         Kasernenstrasse                [4273]
+                                           Sihlquai u. Konradstrasse      [4273]
+  Stadttunnel Süd (Barometer)              ---                            [4272]
+                                           beide Richtungen               [4272]
+  Zollstrasse                              Langstrasse                    [57, 2980]
+                                           Sihlquai                       [57, 2980]
+  Quaibrücke Nord (Limmatseite)            Bellevue                       [26, 1682]
+                                           Bürkliplatz                    [26, 1682]
+  Quaibrücke Süd (Seeseite)                Bellevue                       [25, 1365]
+                                           Bürkliplatz                    [25, 1365]
+
+Loading data for 32 FK_STANDORT IDs...
+Converting CSV → Parquet for bike_counts2026 ...
+Full dataset shape: (998700, 4)
+Writing HTML to: /home/ubuntu/velowetter/output/index.html
+Uploading index.html to s3://velowetter-site-mark/plots/index.html ...
+Upload complete.
